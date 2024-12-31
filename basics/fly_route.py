@@ -4,27 +4,49 @@ import numpy as np
 import math
 from genesis.engine.entities.drone_entity import DroneEntity
 from genesis.vis.camera import Camera
+from genesis.utils.geom import quat_to_xyz, quat_to_R, transform_by_quat, transform_quat_by_quat, inv_quat
 
 base_rpm = 14468.429183500699
-max_rpm = 25000
-delta_rpm = 1000
+min_rpm = 0.98 * base_rpm
+max_rpm = 1.5 * base_rpm
+delta_rpm = 50
 
 def hover(drone: DroneEntity):
     drone.set_propellels_rpm([base_rpm, base_rpm, base_rpm, base_rpm])
 
 def clamp(rpm):
-    return max(0, min(int(rpm), max_rpm))
+    return max(min_rpm, min(int(rpm), max_rpm))
 
-def fly_to_point(point, drone: DroneEntity, scene: gs.Scene, cam: Camera):
+def calc_dir_err(target, drone: DroneEntity):
+    quat = drone.get_quat()
     pos = drone.get_pos()
-    x_err = point[0]-pos[0]
-    y_err = point[1]-pos[1]
-    z_err = point[2]-pos[2]
+    end = torch.Tensor([target[0]-pos[0], target[1]-pos[1], target[2]-pos[2]])
+    dir = torch.mm(quat_to_R(quat).to("cpu"), torch.Tensor([[0],[0],[1]], device="cpu"))
+    end = torch.nn.functional.normalize(end, dim=0)
+    dir = torch.nn.functional.normalize(dir, dim=0)
+    print("end =", end, "dir =", dir)
+    return torch.norm(end.sub(dir))
+
+def tilt_in_bounds(drone: DroneEntity):
+    quat = drone.get_quat()
+    euler = quat_to_xyz(quat)
+    for angle in euler:
+        if angle >= 10:
+            print("out of bounds!")
+            return False
+    return True
+    
+def fly_to_point(point, drone: DroneEntity, scene: gs.Scene, cam: Camera):
+    drone_pos = drone.get_pos()
+    x_err = point[0]-drone_pos[0]
+    y_err = point[1]-drone_pos[1]
+    z_err = point[2]-drone_pos[2]
     step = 0
 
-    distance_to_point  = math.sqrt(x_err**2 + y_err**2 + z_err**2)
+    while calc_dir_err(point, drone) >= 0.5 and step < 100:
+        if not tilt_in_bounds(drone):
+            break
 
-    while distance_to_point >= 0.1 or step < 500:
         rpm_offset_x = delta_rpm * x_err
         rpm_offset_y = delta_rpm * y_err
         rpm_offset_z = delta_rpm * z_err
@@ -42,7 +64,20 @@ def fly_to_point(point, drone: DroneEntity, scene: gs.Scene, cam: Camera):
 
         scene.step()
         cam.render()
-        print("point = ", drone.get_pos())
+        print("point =", drone.get_pos())
+        drone_pos = drone.get_pos()
+        drone_pos = drone_pos.cpu().numpy()
+        cam.set_pose(lookat=(drone_pos[0], drone_pos[1], drone_pos[2]))
+        step += 1
+
+    step = 0
+    distance_to_point = math.inf
+
+    while distance_to_point > 0.25 and step < 250:
+        drone.set_propellels_rpm([1.25*base_rpm, 1.25*base_rpm, 1.25*base_rpm, 1.25*base_rpm])
+        scene.step()
+        cam.render()
+        print("point =", drone.get_pos())
         drone_pos = drone.get_pos()
         drone_pos = drone_pos.cpu().numpy()
         cam.set_pose(lookat=(drone_pos[0], drone_pos[1], drone_pos[2]))
@@ -51,15 +86,6 @@ def fly_to_point(point, drone: DroneEntity, scene: gs.Scene, cam: Camera):
         z_err = point[2]-drone_pos[2]
         distance_to_point  = math.sqrt(x_err**2 + y_err**2 + z_err**2)
         step += 1
-
-    # for i in range(250):
-    #     drone.set_propellels_rpm([base_rpm, base_rpm, base_rpm, base_rpm])
-    #     scene.step()
-    #     cam.render()
-    #     print("point = ", drone.get_pos())
-    #     drone_pos = drone.get_pos()
-    #     drone_pos = drone_pos.cpu().numpy()
-    #     cam.set_pose(lookat=(drone_pos[0], drone_pos[1], drone_pos[2]))
 
 def main():
     gs.init(backend=gs.gpu)
@@ -101,7 +127,7 @@ def main():
     cam.start_recording()
 
     points = [
-        (0,0,0.5)
+        (1,1,2)
     ]
 
     for point in points:
