@@ -20,17 +20,17 @@ class PIDController():
     
 class DroneController():
     def __init__(self, drone: DroneEntity, dt, base_rpm):
-        self.__pid_pos_x = PIDController(kp=0.1, ki=0.0, kd=0.0)
-        self.__pid_pos_y = PIDController(kp=0.1, ki=0.0, kd=0.0)
-        self.__pid_pos_z = PIDController(kp=0.2, ki=0.0, kd=0.0)
+        self.__pid_pos_x = PIDController(kp=2., ki=0.0, kd=0.0)
+        self.__pid_pos_y = PIDController(kp=2., ki=0.0, kd=0.0)
+        self.__pid_pos_z = PIDController(kp=2., ki=0.0, kd=0.0)
 
-        self.__pid_vel_x = PIDController(kp=0.3, ki=0.0, kd=0.0)
-        self.__pid_vel_y = PIDController(kp=0.3, ki=0.0, kd=0.0)
-        self.__pid_vel_z = PIDController(kp=5.0, ki=0.0, kd=0.0)
+        self.__pid_vel_x = PIDController(kp=5., ki=0.0, kd=1.)
+        self.__pid_vel_y = PIDController(kp=5., ki=0.0, kd=1.)
+        self.__pid_vel_z = PIDController(kp=5., ki=0.0, kd=1.)
 
-        self.__pid_att_roll  = PIDController(kp=2.0, ki=0.0, kd=0.2)
-        self.__pid_att_pitch = PIDController(kp=2.0, ki=0.0, kd=0.2)
-        self.__pid_att_yaw   = PIDController(kp=1.6, ki=0.0, kd=0.0)
+        self.__pid_att_roll  = PIDController(kp=10., ki=0.0, kd=1.)
+        self.__pid_att_pitch = PIDController(kp=10., ki=0.0, kd=1.)
+        self.__pid_att_yaw   = PIDController(kp=5., ki=0.0, kd=0.5)
 
         self.drone = drone
         self.__dt = dt
@@ -45,6 +45,7 @@ class DroneController():
     
     def __get_drone_att(self) -> torch.Tensor:
         quat = self.drone.get_quat()
+        # print(quat_to_xyz(quat))
         return quat_to_xyz(quat)
     
     def __mixer(self, thrust, roll, pitch, yaw) -> torch.Tensor:
@@ -52,6 +53,8 @@ class DroneController():
         M2 = self.__base_rpm + (thrust + roll + pitch + yaw)
         M3 = self.__base_rpm + (thrust + roll - pitch - yaw)
         M4 = self.__base_rpm + (thrust - roll - pitch + yaw)
+        # print("pitch =", pitch)
+        # print("roll =", roll)
 
         return torch.Tensor([M1, M2, M3, M4])
 
@@ -64,6 +67,10 @@ class DroneController():
         err_pos_y = target[1] - curr_pos[1]
         err_pos_z = target[2] - curr_pos[2]
 
+        # print(err_pos_x)
+        # print(err_pos_y)
+        # print(err_pos_z)
+
         vel_des_x = self.__pid_pos_x.update(err_pos_x, self.__dt)
         vel_des_y = self.__pid_pos_y.update(err_pos_y, self.__dt)
         vel_des_z = self.__pid_pos_z.update(err_pos_z, self.__dt)
@@ -72,11 +79,15 @@ class DroneController():
         error_vel_y = vel_des_y - curr_vel[1]
         error_vel_z = vel_des_z - curr_vel[2]
 
-        pitch_des  = self.__pid_vel_x.update(error_vel_x, self.__dt)
-        roll_des   = self.__pid_vel_y.update(error_vel_y, self.__dt)
+        # print(error_vel_x)
+        # print(error_vel_y)
+        # print(error_vel_z)
+
+        roll_des   = self.__pid_vel_x.update(error_vel_x, self.__dt)
+        pitch_des  = self.__pid_vel_y.update(error_vel_y, self.__dt)
         thrust_des = self.__pid_vel_z.update(error_vel_z, self.__dt)
 
-        err_roll  = roll_des  - curr_att[0]
+        err_roll  = roll_des - curr_att[0]
         err_pitch = pitch_des - curr_att[1]
         err_yaw   = self.__yaw_target - curr_att[2]
 

@@ -43,10 +43,10 @@ def fly_to_point(point, controller: DroneController, scene: gs.Scene, cam: Camer
     drone = controller.drone
     step = 0
 
-    while(step < 500):
-        [FL, FR, RR, RL] = controller.update(point)
-        FL=clamp(FL); FR=clamp(FR); RR=clamp(RR); RL=clamp(RL)
-        drone.set_propellels_rpm([RL, RR, FR, FL])
+    while(step < 250):
+        [M1, M2, M3, M4] = controller.update(point)
+        M1=clamp(M1); M2=clamp(M2); M3=clamp(M3); M4=clamp(M4)
+        drone.set_propellels_rpm([M1, M2, M3, M4])
         scene.step()
         cam.render()
         # print("point =", drone.get_pos())
@@ -62,8 +62,7 @@ def main():
     scene = gs.Scene(
         show_viewer=False,
         sim_options=gs.options.SimOptions(
-            dt=0.01,
-            gravity=(0,0,-9.81)
+            dt=0.01
         )
 
     )
