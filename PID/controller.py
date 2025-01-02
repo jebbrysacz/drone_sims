@@ -20,17 +20,17 @@ class PIDController():
     
 class DroneController():
     def __init__(self, drone: DroneEntity, dt, base_rpm):
-        self.__pid_pos_x = PIDController(kp=1., ki=0.0, kd=0.0)
-        self.__pid_pos_y = PIDController(kp=1., ki=0.0, kd=0.0)
-        self.__pid_pos_z = PIDController(kp=1., ki=0.0, kd=0.0)
+        self.__pid_pos_x = PIDController(kp=2., ki=0.0, kd=0.0)
+        self.__pid_pos_y = PIDController(kp=2., ki=0.0, kd=0.0)
+        self.__pid_pos_z = PIDController(kp=2., ki=0.0, kd=0.0)
 
-        self.__pid_vel_x = PIDController(kp=20., ki=0.0, kd=0.)
-        self.__pid_vel_y = PIDController(kp=20., ki=0.0, kd=0.)
-        self.__pid_vel_z = PIDController(kp=100., ki=0.0, kd=0.)
+        self.__pid_vel_x = PIDController(kp=10., ki=0.0, kd=4.)
+        self.__pid_vel_y = PIDController(kp=10., ki=0.0, kd=4.)
+        self.__pid_vel_z = PIDController(kp=20., ki=0.0, kd=5.)
 
-        self.__pid_att_roll  = PIDController(kp=2., ki=0.0, kd=0.1)
-        self.__pid_att_pitch = PIDController(kp=2., ki=0.0, kd=0.1)
-        self.__pid_att_yaw   = PIDController(kp=1., ki=0.0, kd=0.)
+        self.__pid_att_roll  = PIDController(kp=5., ki=0.0, kd=0.1)
+        self.__pid_att_pitch = PIDController(kp=5., ki=0.0, kd=0.1)
+        self.__pid_att_yaw   = PIDController(kp=2., ki=0.0, kd=0.05)
 
         self.drone = drone
         self.__dt = dt
@@ -48,10 +48,10 @@ class DroneController():
         return quat_to_xyz(quat)
     
     def __mixer(self, thrust, roll, pitch, yaw, x_vel, y_vel) -> torch.Tensor:
-        M1 = self.__base_rpm + (thrust + roll - pitch - yaw - x_vel + y_vel)
-        M2 = self.__base_rpm + (thrust + roll + pitch + yaw + x_vel + y_vel)
-        M3 = self.__base_rpm + (thrust - roll + pitch - yaw + x_vel - y_vel)
-        M4 = self.__base_rpm + (thrust - roll - pitch + yaw - x_vel - y_vel)
+        M1 = self.__base_rpm + (thrust - roll - pitch - yaw - x_vel + y_vel)
+        M2 = self.__base_rpm + (thrust - roll + pitch + yaw + x_vel + y_vel)
+        M3 = self.__base_rpm + (thrust + roll + pitch - yaw + x_vel - y_vel)
+        M4 = self.__base_rpm + (thrust + roll - pitch + yaw - x_vel - y_vel)
         # print("pitch =", pitch)
         # print("roll =", roll)
 

@@ -42,8 +42,13 @@ def tilt_in_bounds(drone: DroneEntity):
 def fly_to_point(point, controller: DroneController, scene: gs.Scene, cam: Camera):
     drone = controller.drone
     step = 0
+    x = point[0] - drone.get_pos()[0]
+    y = point[1] - drone.get_pos()[1]
+    z = point[2] - drone.get_pos()[2]
 
-    while(step < 250):
+    distance = math.sqrt(x**2 + y**2 + z**2)
+    
+    while (distance > 0.25 and step < 1000):
         [M1, M2, M3, M4] = controller.update(point)
         M1=clamp(M1); M2=clamp(M2); M3=clamp(M3); M4=clamp(M4)
         drone.set_propellels_rpm([M1, M2, M3, M4])
@@ -100,7 +105,7 @@ def main():
     cam.start_recording()
 
     points = [
-        (0,0,0.5)
+        (1,1,2)
     ]
 
     for point in points:
