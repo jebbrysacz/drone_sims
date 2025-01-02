@@ -43,7 +43,7 @@ def fly_to_point(point, controller: DroneController, scene: gs.Scene, cam: Camer
     drone = controller.drone
     step = 0
 
-    while(step < 50):
+    while(step < 250):
         [M1, M2, M3, M4] = controller.update(point)
         M1=clamp(M1); M2=clamp(M2); M3=clamp(M3); M4=clamp(M4)
         drone.set_propellels_rpm([M1, M2, M3, M4])
