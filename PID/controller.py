@@ -20,17 +20,17 @@ class PIDController():
     
 class DroneController():
     def __init__(self, drone: DroneEntity, dt, base_rpm):
-        self.__pid_pos_x = PIDController(kp=2., ki=0.0, kd=0.0)
-        self.__pid_pos_y = PIDController(kp=2., ki=0.0, kd=0.0)
-        self.__pid_pos_z = PIDController(kp=2., ki=0.0, kd=0.0)
+        self.__pid_pos_x = PIDController(kp=1., ki=0.0, kd=0.0)
+        self.__pid_pos_y = PIDController(kp=1., ki=0.0, kd=0.0)
+        self.__pid_pos_z = PIDController(kp=1., ki=0.0, kd=0.0)
 
-        self.__pid_vel_x = PIDController(kp=5., ki=0.0, kd=1.)
-        self.__pid_vel_y = PIDController(kp=5., ki=0.0, kd=1.)
-        self.__pid_vel_z = PIDController(kp=5., ki=0.0, kd=1.)
+        self.__pid_vel_x = PIDController(kp=10., ki=0.0, kd=0.)
+        self.__pid_vel_y = PIDController(kp=10., ki=0.0, kd=0.)
+        self.__pid_vel_z = PIDController(kp=50., ki=0.0, kd=0.)
 
-        self.__pid_att_roll  = PIDController(kp=10., ki=0.0, kd=1.)
-        self.__pid_att_pitch = PIDController(kp=10., ki=0.0, kd=1.)
-        self.__pid_att_yaw   = PIDController(kp=5., ki=0.0, kd=0.5)
+        self.__pid_att_roll  = PIDController(kp=1., ki=0.0, kd=0.)
+        self.__pid_att_pitch = PIDController(kp=1., ki=0.0, kd=0.)
+        self.__pid_att_yaw   = PIDController(kp=1., ki=0.0, kd=0.)
 
         self.drone = drone
         self.__dt = dt
@@ -87,15 +87,25 @@ class DroneController():
         pitch_des  = self.__pid_vel_y.update(error_vel_y, self.__dt)
         thrust_des = self.__pid_vel_z.update(error_vel_z, self.__dt)
 
+
         err_roll  = roll_des - curr_att[0]
         err_pitch = pitch_des - curr_att[1]
         err_yaw   = self.__yaw_target - curr_att[2]
 
-        roll_des  = self.__pid_att_roll.update(err_roll, self.__dt)
-        pitch_des = self.__pid_att_pitch.update(err_pitch, self.__dt)
-        yaw_des   = self.__pid_att_yaw.update(err_yaw, self.__dt)
+        print(err_roll)
+        print(err_pitch)
+        print(err_yaw)
 
-        prop_rpms = self.__mixer(thrust_des, roll_des, pitch_des, yaw_des)
+        roll_del  = self.__pid_att_roll.update(err_roll, self.__dt)
+        pitch_del = self.__pid_att_pitch.update(err_pitch, self.__dt)
+        yaw_del   = self.__pid_att_yaw.update(err_yaw, self.__dt)
+
+        print(roll_del)
+        print(pitch_del)
+        print(yaw_del)
+        print(thrust_des)
+
+        prop_rpms = self.__mixer(thrust_des, roll_del, pitch_del, yaw_del)
         prop_rpms = prop_rpms.cpu()
         prop_rpms - prop_rpms.numpy()
 
